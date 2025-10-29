@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workshop Labour Performance Board</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: #f5f6fa;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    header {
+      background: #004aad;
+      color: white;
+      padding: 20px;
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    /* 🔹 Top Performer Card */
+    #top-performer {
+      margin: 25px auto 10px;
+      width: 280px;
+      padding: 20px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+      animation: cardGlow 2s infinite alternate;
+      z-index: 2;
+      position: relative;
+    }
+
+    /* 🟢 Animated Glow Around the Card */
+    @keyframes cardGlow {
+      from { box-shadow: 0 0 10px #00c853; }
+      to { box-shadow: 0 0 30px #00e676; }
+    }
+
+    /* 🟣 Animated Border Around Top Performer Photo */
+    .top-photo {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 5px solid transparent;
+      background: linear-gradient(45deg, #00e676, #00b0ff, #ff4081, #00e676);
+      background-size: 300% 300%;
+      animation: borderGlow 3s linear infinite;
+      padding: 3px;
+    }
+
+    @keyframes borderGlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* 🔹 Leaderboard Scroll Area */
+    .scroll-container {
+      height: 60vh;
+      overflow: hidden;
+      position: relative;
+      margin: 10px auto;
+      width: 90%;
+      max-width: 800px;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .scroll-content {
+      position: absolute;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      top: 0;
+      animation: scrollUp linear infinite;
+    }
+
+    @keyframes scrollUp {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-50%); }
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #ccc;
+    }
+
+    th {
+      background: #004aad;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tr:nth-child(even) {
+      background: #f0f3ff;
+    }
+
+    td img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    footer {
+      color: #777;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <header>Workshop Labour Performance Board</header>
+
+  <!-- 🔝 Top Performer -->
+  <div id="top-performer"></div>
+
+  <!-- 🔻 Scrollable Leaderboard -->
+  <div class="scroll-container">
+    <div class="scroll-content" id="scroll-content"></div>
+  </div>
+
+  <footer>Auto-updating every 30 minutes</footer>
+
+  <script>
+    const SHEET_ID = "148f8oGqJL5u3ujLdwRzm05x7TKpPoqQikyltXa1zTCw";
+    const SHEET_NAME = "Sheet1";
+    const REFRESH_INTERVAL = 30 * 1000; // 30 seconds
+    const SCROLL_DURATION = 25; // seconds for one full scroll cycle (faster)
+
+    async function fetchData() {
+      try {
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}`;
+        const response = await fetch(csvUrl);
+        const text = await response.text();
+        const rawData = parseCSV(text);
+        const grouped = groupByEmployeeCode(rawData);
+        displayData(grouped);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    }
+
+    function parseCSV(text) {
+      const rows = text.trim().split("\n").map(r => r.split(","));
+      rows.shift();
+      return rows
+        .filter(r => r.length >= 4)
+        .map(row => {
+          const code = clean(row[0]);
+          const name = clean(row[1]);
+          const labour = toNumber(row[2]);
+          const image = convertDriveLink(clean(row[3]));
+          return { code, name, labour, image };
+        });
+    }
+
+    function clean(str) {
+      return str.replace(/"/g, "").trim();
+    }
+
+    function toNumber(str) {
+      if (!str) return 0;
+      const num = parseFloat(str.replace(/,/g, "").replace(/[^\d.-]/g, ""));
+      return isNaN(num) ? 0 : num;
+    }
+
+    function convertDriveLink(url) {
+      if (!url) return "";
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (match) return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+      return url;
+    }
+
+    function groupByEmployeeCode(data) {
+      const grouped = {};
+      data.forEach(item => {
+        if (!grouped[item.code]) grouped[item.code] = { ...item };
+        else grouped[item.code].labour += item.labour;
+      });
+      return Object.values(grouped);
+    }
+
+    function displayData(data) {
+      if (!data.length) return;
+      data.sort((a, b) => b.labour - a.labour);
+      const top = data[0];
+
+      // 🏆 Top performer card
+      document.getElementById("top-performer").innerHTML = `
+        <h3>🏆 Top Performer</h3>
+        <img src="${top.image}" class="top-photo" alt="Top Performer" onerror="this.src='https://via.placeholder.com/100'">
+        <h2>${top.name}</h2>
+        <p><strong>₹${top.labour.toLocaleString()}</strong></p>`;
+
+      // 🧾 Build table
+      const tableHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Employee Name</th>
+              <th>Labour Amount</th>
+              <th>Photo</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map((item, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td>${item.name}</td>
+                <td>₹${item.labour.toLocaleString()}</td>
+                <td><img src="${item.image}" onerror="this.src='https://via.placeholder.com/50'"></td>
+              </tr>`).join("")}
+          </tbody>
+        </table>`;
+
+      // 🔁 Duplicate table for continuous scrolling
+      const scrollContent = document.getElementById("scroll-content");
+      scrollContent.innerHTML = tableHTML + tableHTML; // 2 copies stacked
+      scrollContent.style.animation = `scrollUp ${SCROLL_DURATION}s linear infinite`;
+    }
+
+    fetchData();
+    setInterval(fetchData, REFRESH_INTERVAL);
+  </script>
+</body>
+</html>
