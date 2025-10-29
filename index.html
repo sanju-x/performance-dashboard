@@ -83,30 +83,23 @@
       position: sticky;
       top: 0;
       z-index: 3;
-      text-align: center;
-    }
-
-    thead th:nth-child(2) {
-      text-align: left;
-      padding-left: 30px;
+      text-align: center; /* ✅ Center header text */
     }
 
     tbody td {
       padding: 12px 10px;
       border-bottom: 1px solid #ccc;
-      vertical-align: middle;
     }
 
+    /* ✅ Column alignment adjustments */
     tbody td:nth-child(1),
     tbody td:nth-child(3),
     tbody td:nth-child(4) {
-      text-align: center;
+      text-align: center; /* Rank, Labour Amount, Photo centered */
     }
 
     tbody td:nth-child(2) {
-      text-align: left;
-      padding-left: 30px;
-      font-weight: 500;
+      text-align: left; /* Employee Name left-aligned */
     }
 
     tr:nth-child(even) {
