@@ -37,13 +37,11 @@
       position: relative;
     }
 
-    /* 🟢 Animated Glow Around the Card */
     @keyframes cardGlow {
       from { box-shadow: 0 0 10px #00c853; }
       to { box-shadow: 0 0 30px #00e676; }
     }
 
-    /* 🟣 Animated Border Around Top Performer Photo */
     .top-photo {
       width: 120px;
       height: 120px;
@@ -62,31 +60,15 @@
       100% { background-position: 0% 50%; }
     }
 
-    /* 🔹 Leaderboard Scroll Area */
-    .scroll-container {
-      height: 60vh;
-      overflow: hidden;
-      position: relative;
-      margin: 10px auto;
+    /* 🔹 Table Container */
+    .table-wrapper {
       width: 90%;
       max-width: 800px;
-      border-radius: 12px;
+      margin: 10px auto;
       background: white;
+      border-radius: 12px;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .scroll-content {
-      position: absolute;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      top: 0;
-      animation: scrollUp linear infinite;
-    }
-
-    @keyframes scrollUp {
-      0% { transform: translateY(0); }
-      100% { transform: translateY(-50%); }
+      overflow: hidden;
     }
 
     table {
@@ -95,17 +77,18 @@
       text-align: left;
     }
 
-    th, td {
-      padding: 12px 10px;
-      border-bottom: 1px solid #ccc;
-    }
-
-    th {
+    thead th {
       background: #004aad;
       color: white;
+      padding: 12px 10px;
       position: sticky;
       top: 0;
-      z-index: 1;
+      z-index: 3;
+    }
+
+    tbody td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #ccc;
     }
 
     tr:nth-child(even) {
@@ -119,6 +102,24 @@
       object-fit: cover;
     }
 
+    /* 🔹 Scrolling Section */
+    .scroll-container {
+      height: 55vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .scroll-content {
+      position: absolute;
+      width: 100%;
+      animation: scrollUp linear infinite;
+    }
+
+    @keyframes scrollUp {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-50%); }
+    }
+
     footer {
       color: #777;
       font-size: 14px;
@@ -129,21 +130,31 @@
 <body>
   <header>Workshop Labour Performance Board</header>
 
-  <!-- 🔝 Top Performer -->
   <div id="top-performer"></div>
 
-  <!-- 🔻 Scrollable Leaderboard -->
-  <div class="scroll-container">
-    <div class="scroll-content" id="scroll-content"></div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Employee Name</th>
+          <th>Labour Amount</th>
+          <th>Photo</th>
+        </tr>
+      </thead>
+    </table>
+    <div class="scroll-container">
+      <div class="scroll-content" id="scroll-content"></div>
+    </div>
   </div>
 
-  <footer>Auto-updating every 30 minutes</footer>
+  <footer>Auto-updating every 30 seconds</footer>
 
   <script>
     const SHEET_ID = "148f8oGqJL5u3ujLdwRzm05x7TKpPoqQikyltXa1zTCw";
     const SHEET_NAME = "Sheet1";
     const REFRESH_INTERVAL = 30 * 1000; // 30 seconds
-    const SCROLL_DURATION = 25; // seconds for one full scroll cycle (faster)
+    const SCROLL_DURATION = 25; // seconds for one full scroll cycle
 
     async function fetchData() {
       try {
@@ -161,15 +172,13 @@
     function parseCSV(text) {
       const rows = text.trim().split("\n").map(r => r.split(","));
       rows.shift();
-      return rows
-        .filter(r => r.length >= 4)
-        .map(row => {
-          const code = clean(row[0]);
-          const name = clean(row[1]);
-          const labour = toNumber(row[2]);
-          const image = convertDriveLink(clean(row[3]));
-          return { code, name, labour, image };
-        });
+      return rows.filter(r => r.length >= 4).map(row => {
+        const code = clean(row[0]);
+        const name = clean(row[1]);
+        const labour = toNumber(row[2]);
+        const image = convertDriveLink(clean(row[3]));
+        return { code, name, labour, image };
+      });
     }
 
     function clean(str) {
@@ -203,38 +212,22 @@
       data.sort((a, b) => b.labour - a.labour);
       const top = data[0];
 
-      // 🏆 Top performer card
       document.getElementById("top-performer").innerHTML = `
         <h3>🏆 Top Performer</h3>
         <img src="${top.image}" class="top-photo" alt="Top Performer" onerror="this.src='https://via.placeholder.com/100'">
         <h2>${top.name}</h2>
         <p><strong>₹${top.labour.toLocaleString()}</strong></p>`;
 
-      // 🧾 Build table
-      const tableHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Employee Name</th>
-              <th>Labour Amount</th>
-              <th>Photo</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${data.map((item, i) => `
-              <tr>
-                <td>${i + 1}</td>
-                <td>${item.name}</td>
-                <td>₹${item.labour.toLocaleString()}</td>
-                <td><img src="${item.image}" onerror="this.src='https://via.placeholder.com/50'"></td>
-              </tr>`).join("")}
-          </tbody>
-        </table>`;
+      const rowsHTML = data.map((item, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${item.name}</td>
+          <td>₹${item.labour.toLocaleString()}</td>
+          <td><img src="${item.image}" onerror="this.src='https://via.placeholder.com/50'"></td>
+        </tr>`).join("");
 
-      // 🔁 Duplicate table for continuous scrolling
       const scrollContent = document.getElementById("scroll-content");
-      scrollContent.innerHTML = tableHTML + tableHTML; // 2 copies stacked
+      scrollContent.innerHTML = `<table><tbody>${rowsHTML}${rowsHTML}</tbody></table>`;
       scrollContent.style.animation = `scrollUp ${SCROLL_DURATION}s linear infinite`;
     }
 
